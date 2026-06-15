@@ -27,3 +27,14 @@ env/
 *.mp3
 *.safetensors
 *.bin
+
+# Local fine-tuning artifacts
+finetuning/data/
+finetuning/data_*/
+finetuning/output*/
+finetuning/test_outputs*/
+finetuning/*.jsonl
+finetuning/*.log
+
+# Local generated outputs
+qwen3_tts_test_*.wav
