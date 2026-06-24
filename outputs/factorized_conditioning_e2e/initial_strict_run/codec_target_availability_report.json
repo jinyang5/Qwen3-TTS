@@ -1,0 +1,33 @@
+{
+  "direct_generation_codes": {
+    "available": true,
+    "expected_shape": "[T, 16]",
+    "sample_shapes": {
+      "mixed_legacy": [
+        38,
+        16
+      ],
+      "factorized_happy_disabled": [
+        26,
+        16
+      ],
+      "factorized_slow_disabled": [
+        37,
+        16
+      ]
+    },
+    "preferred_for_training_targets": true,
+    "note": "Direct Talker codes avoid waveform decode/re-encode information loss."
+  },
+  "speech_tokenizer_encoder_fallback": {
+    "attempted": true,
+    "available": true,
+    "shape": [
+      26,
+      16
+    ],
+    "path": "/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/codes/factorized_happy_reencoded.npy",
+    "error": null
+  },
+  "training_data_resolution": "Save direct generation codec matrices alongside each candidate WAV. Use speech_tokenizer.encode only for legacy WAVs without saved generation codes."
+}

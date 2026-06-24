@@ -1,0 +1,22 @@
+{
+  "checkpoint": "/root/autodl-tmp/models/qwen3tts/VoiceDesign",
+  "device": "NVIDIA GeForce RTX 4090",
+  "dtype": "bfloat16",
+  "load_seconds": {
+    "disabled": 2.170553684234619,
+    "enabled": 1.8091895580291748
+  },
+  "num_generations": 4,
+  "num_success": 4,
+  "num_error": 0,
+  "mixed_path_ok": true,
+  "factorized_path_ok": true,
+  "zero_init_equivalence_ok": true,
+  "direct_codec_targets_available": true,
+  "speech_tokenizer_encoder_available": true,
+  "near_silent_outputs": [],
+  "training_performed": false,
+  "omni_api_called": false,
+  "checkpoint_modified": false,
+  "ready_for_clean_pilot_generation": true
+}

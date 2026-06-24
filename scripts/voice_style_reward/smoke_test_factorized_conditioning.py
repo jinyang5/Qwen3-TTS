@@ -143,6 +143,18 @@ def main() -> None:
     expected_legacy_ids = tokenizer.encode(wrapper._build_instruct_text(legacy_instruction))
     checks.append(check("legacy_mixed_has_no_segment_ids", legacy_kwargs["instruct_segment_ids"] is None))
     checks.append(check("legacy_mixed_tokenization_unchanged", legacy_kwargs["instruct_ids"][0].squeeze(0).tolist() == expected_legacy_ids))
+    codec_return = wrapper.generate_voice_design(
+        text="今天我们介绍一项新的语音实验。",
+        instruct=legacy_instruction,
+        language="zh",
+        return_codec_codes=True,
+    )
+    checks.append(
+        check(
+            "optional_codec_return_preserves_default_api",
+            len(codec_return) == 3 and codec_return[2][0].shape == (1, 16),
+        )
+    )
 
     wrapper.generate_voice_design(
         text="今天我们介绍一项新的语音实验。",

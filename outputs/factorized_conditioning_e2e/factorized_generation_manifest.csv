@@ -1,0 +1,34 @@
+﻿sample_id,mode,factorized_conditioning_enabled,instruct,voice_prompt,style_prompt,text,language,full_prompt,voice_span,style_span,text_span,segment_ids_present,segment_types,segment_embedding_invoked,adapter_invoked,wav_path,duration_sec,rms,peak,near_silent,codec_codes_available,codec_shape,codec_path,generation_seconds,generation_error
+factorized_happy_disabled,factorized,False,,一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。,开心明亮地说，语气积极，能量中等偏高，语速自然略快。,今天我们介绍一项新的语音实验。,zh,"<voice>
+一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。
+</voice>
+
+<style>
+开心明亮地说，语气积极，能量中等偏高，语速自然略快。
+</style>
+
+<text>
+今天我们介绍一项新的语音实验。
+</text>","[3, 27]","[33, 52]","[59, 66]",True,"[0, 1, 2, 3]",False,False,/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/wavs/factorized_happy_disabled.wav,2.08,0.10412113958857817,0.478515625,False,True,"[26, 16]",/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/codes/factorized_happy_disabled.npy,1.9808595180511475,
+factorized_slow_disabled,factorized,False,,一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。,清晰自然地慢速说出，语速明显放慢，停顿更充分，但不要拖音或长时间静音。,今天我们介绍一项新的语音实验。,zh,"<voice>
+一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。
+</voice>
+
+<style>
+清晰自然地慢速说出，语速明显放慢，停顿更充分，但不要拖音或长时间静音。
+</style>
+
+<text>
+今天我们介绍一项新的语音实验。
+</text>","[3, 27]","[33, 60]","[67, 74]",True,"[0, 1, 2, 3]",False,False,/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/wavs/factorized_slow_disabled.wav,2.96,0.11625446984074683,0.490234375,False,True,"[37, 16]",/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/codes/factorized_slow_disabled.npy,2.8118600845336914,
+factorized_happy_enabled,factorized,True,,一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。,开心明亮地说，语气积极，能量中等偏高，语速自然略快。,今天我们介绍一项新的语音实验。,zh,"<voice>
+一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。
+</voice>
+
+<style>
+开心明亮地说，语气积极，能量中等偏高，语速自然略快。
+</style>
+
+<text>
+今天我们介绍一项新的语音实验。
+</text>","[3, 27]","[33, 52]","[59, 66]",True,"[0, 1, 2, 3]",True,True,/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/wavs/factorized_happy_enabled.wav,2.08,0.10411863294414217,0.478515625,False,True,"[26, 16]",/root/autodl-tmp/Qwen3-TTS/outputs/factorized_conditioning_e2e/codes/factorized_happy_enabled.npy,1.9795799255371094,

@@ -1,7 +1,7 @@
 {
   "passed": true,
-  "num_checks": 17,
-  "num_passed": 17,
+  "num_checks": 18,
+  "num_passed": 18,
   "loaded_tts_checkpoint": false,
   "generated_audio": false,
   "checks": [
@@ -69,6 +69,11 @@
     },
     {
       "name": "legacy_mixed_tokenization_unchanged",
+      "passed": true,
+      "details": {}
+    },
+    {
+      "name": "optional_codec_return_preserves_default_api",
       "passed": true,
       "details": {}
     },

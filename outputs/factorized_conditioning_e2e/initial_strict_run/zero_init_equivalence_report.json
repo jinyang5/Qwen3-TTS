@@ -1,0 +1,48 @@
+{
+  "checkpoint": "/root/autodl-tmp/models/qwen3tts/VoiceDesign",
+  "seed": 20260625,
+  "generation_mode": "greedy",
+  "same_full_prompt": true,
+  "full_prompt_sha256": "d80297c5c3d256848d61b35fa96716443cbd124e5e61b81c349bfbda3abed216",
+  "disabled_config": {
+    "enabled": false,
+    "use_segment_embedding": true,
+    "use_voice_style_adapter": true,
+    "hidden_size": 2048,
+    "bottleneck_size": 256,
+    "num_segments": 4,
+    "adapt_text": false
+  },
+  "enabled_config": {
+    "enabled": true,
+    "use_segment_embedding": true,
+    "use_voice_style_adapter": true,
+    "hidden_size": 2048,
+    "bottleneck_size": 256,
+    "num_segments": 4,
+    "adapt_text": false
+  },
+  "identity_parameter_state": {
+    "segment_embedding_max_abs": 0.0,
+    "voice_up_weight_max_abs": 0.0,
+    "style_up_weight_max_abs": 0.0,
+    "all_identity_parameters_zero": true
+  },
+  "segment_embedding_invocations": 1,
+  "adapter_invocations": 1,
+  "disabled_codec_shape": [
+    26,
+    16
+  ],
+  "enabled_codec_shape": [
+    26,
+    16
+  ],
+  "codec_codes_exactly_equal": true,
+  "codec_difference_count": 0,
+  "wav_lengths_equal": true,
+  "wav_max_abs_difference": 0.009765625,
+  "wav_rmse": 0.0005864172406927927,
+  "equivalence_pass": false,
+  "enabled_generation_error": null
+}

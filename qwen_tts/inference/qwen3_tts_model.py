@@ -644,8 +644,12 @@ class Qwen3TTSModel:
         voice_prompt: Optional[Union[str, List[str]]] = None,
         style_prompt: Optional[Union[str, List[str]]] = None,
         prompt_format: Optional[Union[str, List[str]]] = None,
+        return_codec_codes: bool = False,
         **kwargs,
-    ) -> Tuple[List[np.ndarray], int]:
+    ) -> Union[
+        Tuple[List[np.ndarray], int],
+        Tuple[List[np.ndarray], int, List[torch.Tensor]],
+    ]:
         """
         Generate speech with the VoiceDesign model using natural-language style instructions.
 
@@ -664,6 +668,10 @@ class Qwen3TTSModel:
             prompt_format:
                 Optional ``"factorized"`` selector. Supplying voice/style
                 prompts also selects factorized mode.
+            return_codec_codes:
+                If ``True``, also return the generated codec matrices as a
+                list of ``[time, num_code_groups]`` tensors. The default
+                ``False`` preserves the original two-item return signature.
             non_streaming_mode:
                 Using non-streaming text input, this option currently only simulates streaming text input when set to `false`, 
                 rather than enabling true streaming input or streaming generation.
@@ -794,6 +802,8 @@ class Qwen3TTSModel:
         )
 
         wavs, fs = self.model.speech_tokenizer.decode([{"audio_codes": c} for c in talker_codes_list])
+        if return_codec_codes:
+            return wavs, fs, talker_codes_list
         return wavs, fs
 
     # custom voice model

@@ -38,3 +38,7 @@ finetuning/*.log
 
 # Local generated outputs
 qwen3_tts_test_*.wav
+
+# Local real-checkpoint E2E artifacts (manifests/reports remain trackable)
+outputs/factorized_conditioning_e2e/codes/
+outputs/factorized_conditioning_e2e/wavs/
