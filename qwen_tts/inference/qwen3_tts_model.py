@@ -27,6 +27,7 @@ import torch
 from transformers import AutoConfig, AutoModel, AutoProcessor
 
 from ..core.models import Qwen3TTSConfig, Qwen3TTSForConditionalGeneration, Qwen3TTSProcessor
+from .factorized_prompt import build_factorized_prompt, encode_text_piece
 
 AudioLike = Union[
     str,                     # wav path, URL, base64
@@ -637,9 +638,12 @@ class Qwen3TTSModel:
     def generate_voice_design(
         self,
         text: Union[str, List[str]],
-        instruct: Union[str, List[str]],
+        instruct: Optional[Union[str, List[str]]] = None,
         language: Union[str, List[str]] = None,
         non_streaming_mode: bool = True,
+        voice_prompt: Optional[Union[str, List[str]]] = None,
+        style_prompt: Optional[Union[str, List[str]]] = None,
+        prompt_format: Optional[Union[str, List[str]]] = None,
         **kwargs,
     ) -> Tuple[List[np.ndarray], int]:
         """
@@ -652,6 +656,14 @@ class Qwen3TTSModel:
                 Language(s) for each sample.
             instruct:
                 Instruction(s) describing desired voice/style. Empty string is allowed (treated as no instruction).
+                This is the unchanged legacy mixed-prompt path.
+            voice_prompt, style_prompt:
+                Separate prompts for factorized mode. Both are required when
+                ``prompt_format="factorized"`` and cannot be combined with a
+                non-empty legacy ``instruct``.
+            prompt_format:
+                Optional ``"factorized"`` selector. Supplying voice/style
+                prompts also selects factorized mode.
             non_streaming_mode:
                 Using non-streaming text input, this option currently only simulates streaming text input when set to `false`, 
                 rather than enabling true streaming input or streaming generation.
@@ -693,32 +705,89 @@ class Qwen3TTSModel:
         
         texts = self._ensure_list(text)
         languages = self._ensure_list(language) if isinstance(language, list) else ([language] * len(texts) if language is not None else ["Auto"] * len(texts))
-        instructs = self._ensure_list(instruct)
+        language_aliases = {"zh": "Chinese", "zh-cn": "Chinese", "en": "English"}
+        languages = [language_aliases.get(str(item).lower(), item) for item in languages]
+
+        formats = self._ensure_list(prompt_format) if isinstance(prompt_format, list) else [prompt_format] * len(texts)
+        if len(formats) == 1 and len(texts) > 1:
+            formats = formats * len(texts)
+        formats = [str(item).lower() if item is not None else None for item in formats]
+        factorized_mode = voice_prompt is not None or style_prompt is not None or any(
+            str(item).lower() == "factorized" for item in formats if item is not None
+        )
+
+        instruct_segment_ids: Optional[List[torch.Tensor]] = None
+        if factorized_mode:
+            if instruct is not None and any(str(item).strip() for item in self._ensure_list(instruct)):
+                raise ValueError("factorized input cannot be combined with a non-empty legacy instruct")
+            voice_prompts = self._ensure_list(voice_prompt)
+            style_prompts = self._ensure_list(style_prompt)
+            if len(voice_prompts) == 1 and len(texts) > 1:
+                voice_prompts = voice_prompts * len(texts)
+            if len(style_prompts) == 1 and len(texts) > 1:
+                style_prompts = style_prompts * len(texts)
+            if not (len(texts) == len(voice_prompts) == len(style_prompts) == len(formats)):
+                raise ValueError(
+                    "Batch size mismatch for factorized input: "
+                    f"text={len(texts)}, voice_prompt={len(voice_prompts)}, "
+                    f"style_prompt={len(style_prompts)}, prompt_format={len(formats)}"
+                )
+            if any(item not in (None, "factorized") for item in formats):
+                raise ValueError("factorized batches require prompt_format='factorized' for every sample")
+            tokenizer = getattr(self.processor, "tokenizer", self.processor)
+            prefix_ids = encode_text_piece(tokenizer, "<|im_start|>user\n")
+            suffix_ids = encode_text_piece(tokenizer, "<|im_end|>\n")
+            instruct_ids = []
+            instruct_segment_ids = []
+            for voice, style, target_text in zip(voice_prompts, style_prompts, texts):
+                structured = build_factorized_prompt(
+                    voice_prompt=voice,
+                    style_prompt=style,
+                    text=target_text,
+                    tokenizer=tokenizer,
+                )
+                token_ids = prefix_ids + structured["input_ids"] + suffix_ids
+                segment_ids = (
+                    [0] * len(prefix_ids) + structured["segment_ids"] + [0] * len(suffix_ids)
+                )
+                instruct_ids.append(
+                    torch.tensor([token_ids], dtype=torch.long, device=self.device)
+                )
+                instruct_segment_ids.append(
+                    torch.tensor([segment_ids], dtype=torch.long, device=self.device)
+                )
+        else:
+            instructs = self._ensure_list(instruct)
+
+            if len(instructs) == 1 and len(texts) > 1:
+                instructs = instructs * len(texts)
+            if len(instructs) != len(texts):
+                raise ValueError(
+                    f"Batch size mismatch: text={len(texts)}, language={len(languages)}, instruct={len(instructs)}"
+                )
+            instruct_ids = []
+            for ins in instructs:
+                if ins is None or ins == "":
+                    instruct_ids.append(None)
+                else:
+                    instruct_ids.append(self._tokenize_texts([self._build_instruct_text(ins)])[0])
 
         if len(languages) == 1 and len(texts) > 1:
             languages = languages * len(texts)
-        if len(instructs) == 1 and len(texts) > 1:
-            instructs = instructs * len(texts)
 
-        if not (len(texts) == len(languages) == len(instructs)):
-            raise ValueError(f"Batch size mismatch: text={len(texts)}, language={len(languages)}, instruct={len(instructs)}")
+        if len(texts) != len(languages):
+            raise ValueError(f"Batch size mismatch: text={len(texts)}, language={len(languages)}")
 
         self._validate_languages(languages)
 
         input_ids = self._tokenize_texts([self._build_assistant_text(t) for t in texts])
-
-        instruct_ids: List[Optional[torch.Tensor]] = []
-        for ins in instructs:
-            if ins is None or ins == "":
-                instruct_ids.append(None)
-            else:
-                instruct_ids.append(self._tokenize_texts([self._build_instruct_text(ins)])[0])
 
         gen_kwargs = self._merge_generate_kwargs(**kwargs)
 
         talker_codes_list, _ = self.model.generate(
             input_ids=input_ids,
             instruct_ids=instruct_ids,
+            instruct_segment_ids=instruct_segment_ids,
             languages=languages,
             non_streaming_mode=non_streaming_mode,
             **gen_kwargs,

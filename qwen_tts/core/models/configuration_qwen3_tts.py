@@ -18,6 +18,16 @@ from transformers.utils import logging
 
 logger = logging.get_logger(__name__)
 
+DEFAULT_FACTORIZED_CONDITIONING_CONFIG = {
+    "enabled": False,
+    "use_segment_embedding": True,
+    "use_voice_style_adapter": True,
+    "hidden_size": 2048,
+    "bottleneck_size": 256,
+    "num_segments": 4,
+    "adapt_text": False,
+}
+
 
 class Qwen3TTSSpeakerEncoderConfig(PretrainedConfig):
     r"""
@@ -474,6 +484,7 @@ class Qwen3TTSConfig(PretrainedConfig):
         tts_pad_token_id=151671,
         tts_bos_token_id=151672,
         tts_eos_token_id=151673,
+        factorized_conditioning=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -497,6 +508,10 @@ class Qwen3TTSConfig(PretrainedConfig):
         self.tts_pad_token_id = tts_pad_token_id
         self.tts_bos_token_id = tts_bos_token_id
         self.tts_eos_token_id = tts_eos_token_id
+        self.factorized_conditioning = {
+            **DEFAULT_FACTORIZED_CONDITIONING_CONFIG,
+            **(factorized_conditioning or {}),
+        }
 
 
 __all__ = ["Qwen3TTSConfig", "Qwen3TTSTalkerConfig", "Qwen3TTSSpeakerEncoderConfig"]

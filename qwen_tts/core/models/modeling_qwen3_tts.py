@@ -44,6 +44,7 @@ from transformers.utils import can_return_tuple, logging
 from transformers.utils.hub import cached_file
 
 from ...inference.qwen3_tts_tokenizer import Qwen3TTSTokenizer
+from .adapters import PromptSegmentEmbedding, VoiceStyleConditioningAdapter
 from .configuration_qwen3_tts import (Qwen3TTSConfig,
                                       Qwen3TTSSpeakerEncoderConfig,
                                       Qwen3TTSTalkerCodePredictorConfig,
@@ -481,7 +482,11 @@ class Qwen3TTSPreTrainedModel(PreTrainedModel):
         # inference and fine-tuning - so the proper init weights code has been removed
         std = self.config.initializer_range if hasattr(self.config, "initializer_range") else 0.02
 
-        if isinstance(module, (nn.Linear, nn.Conv1d, nn.Conv3d, nn.ConvTranspose1d)):
+        if isinstance(module, PromptSegmentEmbedding):
+            module.reset_identity_parameters()
+        elif isinstance(module, VoiceStyleConditioningAdapter):
+            module.reset_identity_parameters()
+        elif isinstance(module, (nn.Linear, nn.Conv1d, nn.Conv3d, nn.ConvTranspose1d)):
             module.weight.data.normal_(mean=0.0, std=std)
             if module.bias is not None:
                 module.bias.data.zero_()
@@ -1839,12 +1844,50 @@ class Qwen3TTSForConditionalGeneration(Qwen3TTSPreTrainedModel, GenerationMixin)
         self.tts_model_type = self.config.tts_model_type
 
         self.post_init()
+
+        factorized_config = self.config.factorized_conditioning
+        self.factorized_conditioning_enabled = bool(factorized_config["enabled"])
+        self.factorized_segment_embedding = None
+        self.voice_style_conditioning_adapter = None
+        if self.factorized_conditioning_enabled:
+            hidden_size = int(factorized_config["hidden_size"])
+            if hidden_size != self.config.talker_config.hidden_size:
+                raise ValueError(
+                    "factorized_conditioning.hidden_size must match talker hidden_size: "
+                    f"{hidden_size} != {self.config.talker_config.hidden_size}"
+                )
+            if factorized_config["use_segment_embedding"]:
+                self.factorized_segment_embedding = PromptSegmentEmbedding(
+                    hidden_size=hidden_size,
+                    num_segments=int(factorized_config["num_segments"]),
+                )
+            if factorized_config["use_voice_style_adapter"]:
+                self.voice_style_conditioning_adapter = VoiceStyleConditioningAdapter(
+                    hidden_size=hidden_size,
+                    bottleneck_size=int(factorized_config["bottleneck_size"]),
+                    adapt_text=bool(factorized_config.get("adapt_text", False)),
+                )
     
     def load_speech_tokenizer(self, speech_tokenizer):
         self.speech_tokenizer = speech_tokenizer
     
     def load_generate_config(self, generate_config):
         self.generate_config = generate_config
+
+    def apply_factorized_conditioning(
+        self,
+        hidden_states: torch.Tensor,
+        segment_ids: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        """Apply configured adapters to projected prompt states, or bypass exactly."""
+        if not self.factorized_conditioning_enabled or segment_ids is None:
+            return hidden_states
+        segment_ids = segment_ids.to(device=hidden_states.device, dtype=torch.long)
+        if self.factorized_segment_embedding is not None:
+            hidden_states = self.factorized_segment_embedding(hidden_states, segment_ids)
+        if self.voice_style_conditioning_adapter is not None:
+            hidden_states = self.voice_style_conditioning_adapter(hidden_states, segment_ids)
+        return hidden_states
     
     def get_supported_speakers(self):
         return self.supported_speakers
@@ -2023,6 +2066,7 @@ class Qwen3TTSForConditionalGeneration(Qwen3TTSPreTrainedModel, GenerationMixin)
         self,
         input_ids: Optional[list[torch.Tensor]] = None,
         instruct_ids: Optional[list[torch.Tensor]] = None,
+        instruct_segment_ids: Optional[list[torch.Tensor]] = None,
         ref_ids: Optional[list[torch.Tensor]] = None,
         voice_clone_prompt: list[dict] = None,
         languages: list[str] = None,
@@ -2067,6 +2111,10 @@ class Qwen3TTSForConditionalGeneration(Qwen3TTSPreTrainedModel, GenerationMixin)
         
         talker_input_embeds = [[] for _ in range(len(input_ids))]
 
+        if instruct_segment_ids is not None:
+            if instruct_ids is None or len(instruct_segment_ids) != len(instruct_ids):
+                raise ValueError("instruct_segment_ids must align one-to-one with instruct_ids")
+
         voice_clone_spk_embeds = None
         # voice clone speaker prompt generate
         if voice_clone_prompt is not None:
@@ -2076,8 +2124,18 @@ class Qwen3TTSForConditionalGeneration(Qwen3TTSPreTrainedModel, GenerationMixin)
         if instruct_ids is not None:
             for index, instruct_id in enumerate(instruct_ids):
                 if instruct_id is not None:
-                    talker_input_embeds[index].append(self.talker.text_projection(
-                                                  self.talker.get_text_embeddings()(instruct_id)))
+                    projected_instruct = self.talker.text_projection(
+                        self.talker.get_text_embeddings()(instruct_id)
+                    )
+                    segment_ids = (
+                        instruct_segment_ids[index]
+                        if instruct_segment_ids is not None
+                        else None
+                    )
+                    projected_instruct = self.apply_factorized_conditioning(
+                        projected_instruct, segment_ids
+                    )
+                    talker_input_embeds[index].append(projected_instruct)
 
         # tts text prompt generate
         trailing_text_hiddens = []

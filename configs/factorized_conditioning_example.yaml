@@ -1,0 +1,30 @@
+factorized_conditioning:
+  enabled: false
+  use_segment_embedding: true
+  use_voice_style_adapter: true
+  hidden_size: 2048
+  bottleneck_size: 256
+  num_segments: 4
+  adapt_text: false
+
+samples:
+  - sample_id: V001_happy_T001
+    voice_prompt: "一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。"
+    style_prompt: "开心明亮地说，语气积极，能量中等偏高，语速自然略快。"
+    text: "今天我们介绍一项新的语音实验。"
+    language: "zh"
+    prompt_format: "factorized"
+
+  - sample_id: V001_slow_T001
+    voice_prompt: "一位年轻女性说话人，普通话标准，音色明亮清晰，声线偏轻，音高略高。"
+    style_prompt: "清晰自然地慢速说出，语速明显放慢，停顿更充分，但不要拖音或长时间静音。"
+    text: "今天我们介绍一项新的语音实验。"
+    language: "zh"
+    prompt_format: "factorized"
+
+  - sample_id: V002_serious_T001
+    voice_prompt: "一位成年男性说话人，普通话标准，音色低沉厚实，声线稳定，发声自然清楚。"
+    style_prompt: "严肃克制地说，语气正式，语速中等偏慢，停顿清晰。"
+    text: "今天我们介绍一项新的语音实验。"
+    language: "zh"
+    prompt_format: "factorized"
