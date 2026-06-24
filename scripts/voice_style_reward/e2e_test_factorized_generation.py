@@ -75,7 +75,12 @@ def set_seed(seed: int) -> None:
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=MANIFEST_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=MANIFEST_FIELDS,
+            extrasaction="ignore",
+            lineterminator="\n",
+        )
         writer.writeheader()
         writer.writerows(rows)
 
@@ -85,6 +90,19 @@ def write_json(path: Path, value: Any) -> None:
         json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
+
+
+def artifact_path(path: Path) -> str:
+    """Store repo-relative artifact paths when possible."""
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path.resolve())
+
+
+def artifact_exists(path: str) -> bool:
+    candidate = Path(path)
+    return candidate.is_file() if candidate.is_absolute() else (ROOT / candidate).is_file()
 
 
 def audio_metrics(wav: np.ndarray, sample_rate: int) -> dict[str, Any]:
@@ -232,10 +250,10 @@ def save_generation(
         row.update(audio_metrics(wav, sample_rate))
         row.update(
             {
-                "wav_path": str(wav_path),
+                "wav_path": artifact_path(wav_path),
                 "codec_codes_available": codes_cpu.ndim == 2,
                 "codec_shape": json.dumps(list(codes_cpu.shape)),
-                "codec_path": str(code_path),
+                "codec_path": artifact_path(code_path),
             }
         )
     except Exception as exc:
@@ -359,7 +377,7 @@ def main() -> int:
                 {
                     "available": encoded_codes.ndim == 2,
                     "shape": list(encoded_codes.shape),
-                    "path": str(encoded_path),
+                    "path": artifact_path(encoded_path),
                 }
             )
             original_codes = direct_codes.get("factorized_happy_disabled")
@@ -503,13 +521,17 @@ def main() -> int:
     write_json(output_dir / "zero_init_equivalence_report.json", zero_report)
     write_json(output_dir / "codec_target_availability_report.json", codec_report)
 
-    mixed_ok = bool(mixed_rows and not mixed_rows[0]["generation_error"] and Path(mixed_rows[0]["wav_path"]).is_file())
+    mixed_ok = bool(
+        mixed_rows
+        and not mixed_rows[0]["generation_error"]
+        and artifact_exists(mixed_rows[0]["wav_path"])
+    )
     factorized_disabled_rows = [
         row for row in factorized_rows if not row["factorized_conditioning_enabled"]
     ]
     factorized_ok = bool(factorized_disabled_rows) and all(
         not row["generation_error"]
-        and Path(row["wav_path"]).is_file()
+        and artifact_exists(row["wav_path"])
         and row["segment_ids_present"]
         for row in factorized_disabled_rows
     )
